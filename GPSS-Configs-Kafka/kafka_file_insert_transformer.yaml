@@ -1,0 +1,37 @@
+DATABASE: {{db}}
+USER: gpadmin
+HOST: localhost
+PORT: 5432
+VERSION: 2
+KAFKA:
+  INPUT:
+    SOURCE:
+      BROKERS: localhost:9092
+      TOPIC: TopicSample
+    VALUE:
+      COLUMNS:
+        - NAME: cust_id
+          TYPE: int
+        - NAME: __IGNORED__
+          TYPE: int
+        - NAME: expenses
+          TYPE: decimal(9,2)
+      FORMAT: csv
+    ERROR_LIMIT: 10000
+  OUTPUT:
+    TABLE: data_from_kafka
+    MODE: INSERT
+    TRANSFORMER:
+      TRANSFORM: simple_mapping
+      PROPERTIES:
+        tax-ratio: 1.0
+  TASK:
+    BATCH_INTERVAL: 1
+    POST_BATCH_SQL: create table if not exists log_gpss_jobs (timestamp timestamp default current_timestamp, message text) distributed randomly; insert into log_gpss_jobs (message) values ('loaded data');
+    TEARDOWN_SQL: create table if not exists log_gpss_jobs (timestamp timestamp default current_timestamp, message text) distributed randomly; insert into log_gpss_jobs (message) values ('job stopped!');
+  COMMIT:
+    MINIMAL_INTERVAL: 2000
+    MAX_ROW: 10
+ALERT:
+  COMMAND: "sudo touch alert_file"
+  WORKDIR: "/tmp"
